@@ -163,7 +163,8 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
       });
 
       const token = localStorage.getItem('govflow_token');
-      const res = await fetch(`/api/v1/applications/${appId}/batch-upload-intake`, {
+      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      const res = await fetch(`${apiBase}/applications/${appId}/batch-upload-intake`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

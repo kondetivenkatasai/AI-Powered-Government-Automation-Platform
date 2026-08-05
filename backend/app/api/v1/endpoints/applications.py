@@ -132,7 +132,14 @@ async def batch_upload_document_intake(
     db.commit()
 
     try:
-        ai_pipeline.process_application(db, application_id)
+        report = ai_pipeline.process_application(db, application_id)
+        if report and intake_result.get("ai_summary"):
+            intake_result["ai_summary"]["recommendation"] = report.recommendation
+            intake_result["ai_summary"]["fraud_risk"] = float(report.fraud_score or 0.0)
+            intake_result["ai_summary"]["ocr_accuracy"] = float(report.confidence_score or 0.0)
+            intake_result["ai_summary"]["summary"] = report.summary
+            if report.recommendation == "REJECT":
+                intake_result["intake_success"] = False
     except Exception as e:
         print(f"AI batch processing note: {e}")
 

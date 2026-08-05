@@ -647,7 +647,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
             </button>
           ) : (
             <button
-              disabled={!intakeResult || intakeResult.missing_documents.length > 0 || intakeResult.ai_summary.rejected > 0}
+              disabled={!intakeResult || intakeResult.missing_documents.length > 0 || intakeResult.ai_summary.rejected > 0 || intakeResult.ai_summary.recommendation === 'REJECTED' || intakeResult.ai_summary.recommendation === 'REJECT'}
               onClick={handleFinalFinish}
               className="px-6 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white text-xs font-bold rounded-lg shadow-lg shadow-emerald-600/30 flex items-center space-x-2 disabled:opacity-50"
             >

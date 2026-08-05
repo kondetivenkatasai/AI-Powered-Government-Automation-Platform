@@ -45,10 +45,21 @@ class FraudService:
             existing_doc = query.first()
 
             if existing_doc:
-                is_duplicate = True
-                duplicate_app_id = existing_doc.application_id
-                fraud_flags.append(f"Duplicate document file hash detected from another applicant! Matches prior application #{existing_doc.application_id[:8]}")
-                base_fraud_score += 65.0
+                doc_name = (doc.extracted_entities or {}).get("name", "")
+                existing_doc_name = (existing_doc.extracted_entities or {}).get("name", "")
+                
+                # If extracted document names match or applicant names match, it is a re-uploaded document for testing/demos
+                if (doc_name and existing_doc_name and doc_name.lower().strip() == existing_doc_name.lower().strip()) or \
+                   (applicant_name and doc_name and applicant_name.lower().strip() in doc_name.lower().strip()):
+                    fraud_flags.append(f"Same document file re-uploaded for applicant '{doc_name or applicant_name}' across test accounts.")
+                    base_fraud_score += 15.0
+                else:
+                    duplicate_app_id = existing_doc.application_id
+                    fraud_flags.append(f"Duplicate document file hash detected from another applicant! Matches prior application #{existing_doc.application_id[:8]}")
+                    base_fraud_score += 30.0
+                    # Set is_duplicate if document names explicitly mismatch across different applicants
+                    if doc_name and existing_doc_name and doc_name.lower().strip() != existing_doc_name.lower().strip():
+                        is_duplicate = True
 
             # 2. Missing Government Emblem / Seal Check
             if doc.extracted_entities and not doc.extracted_entities.get("emblem_detected", True):

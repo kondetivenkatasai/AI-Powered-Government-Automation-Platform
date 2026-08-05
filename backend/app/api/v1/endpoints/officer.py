@@ -22,13 +22,16 @@ class OfficerDecisionPayload(BaseModel):
 @router.get("/applications")
 def get_officer_applications(
     status_filter: Optional[str] = None,
+    department_filter: Optional[str] = None,
     current_user: User = Depends(RoleChecker([UserRole.OFFICER, UserRole.ADMINISTRATOR])),
     db: Session = Depends(get_db)
 ) -> Any:
-    """Retrieve applications routed to the officer's department."""
+    """Retrieve applications routed to the officer's department or all departments."""
     query = db.query(Application)
     
-    if current_user.role == UserRole.OFFICER.value and current_user.department_id:
+    if department_filter and department_filter != "ALL":
+        query = query.filter(Application.department_id == department_filter)
+    elif not department_filter and current_user.role == UserRole.OFFICER.value and current_user.department_id:
         query = query.filter(Application.department_id == current_user.department_id)
 
     if status_filter:
@@ -50,6 +53,7 @@ def get_officer_applications(
             "applicant_name": applicant.full_name if applicant else "N/A",
             "applicant_email": applicant.email if applicant else "N/A",
             "application_type_title": app_type.title if app_type else "Service Application",
+            "department_id": app.department_id,
             "department_name": dept.name if dept else "General Department",
             "status": app.status,
             "form_data": app.form_data,

@@ -17,13 +17,39 @@ export const OfficerDashboard: React.FC = () => {
   const [submittingDecision, setSubmittingDecision] = useState(false);
   const [decisionSuccess, setDecisionSuccess] = useState<string | null>(null);
 
+  const [filterDept, setFilterDept] = useState<string>('ALL');
+  const [departments, setDepartments] = useState<{ id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    apiFetch<any[]>('/applications/types')
+      .then((types) => {
+        const deptsMap = new Map<string, string>();
+        types.forEach((t) => {
+          if (t.department_id && t.department_name) {
+            deptsMap.set(t.department_id, t.department_name);
+          }
+        });
+        const deptsList = Array.from(deptsMap.entries()).map(([id, name]) => ({ id, name }));
+        setDepartments(deptsList);
+      })
+      .catch((err) => console.error("Failed to load departments list:", err));
+  }, []);
+
   const fetchApplications = async () => {
     setLoading(true);
     try {
-      const endpoint = filterStatus === 'ALL' ? '/officer/applications' : `/officer/applications?status_filter=${filterStatus}`;
+      const params = new URLSearchParams();
+      if (filterStatus !== 'ALL') params.append('status_filter', filterStatus);
+      if (filterDept !== 'ALL') {
+        params.append('department_filter', filterDept);
+      } else {
+        params.append('department_filter', 'ALL');
+      }
+
+      const endpoint = `/officer/applications?${params.toString()}`;
       const data = await apiFetch<OfficerApplication[]>(endpoint);
       setApplications(data);
-      if (data.length > 0 && !selectedApp) {
+      if (data.length > 0 && (!selectedApp || !data.some(a => a.id === selectedApp.id))) {
         setSelectedApp(data[0]);
       }
     } catch (err) {
@@ -35,7 +61,7 @@ export const OfficerDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchApplications();
-  }, [filterStatus]);
+  }, [filterStatus, filterDept]);
 
   const handleDecision = async (decision: 'APPROVED' | 'REJECTED') => {
     if (!selectedApp) return;
@@ -89,21 +115,41 @@ export const OfficerDashboard: React.FC = () => {
           <p className="text-xs text-slate-400 mt-1">Multi-stage document classification, fraud index scoring & 1-click approvals</p>
         </div>
 
-        {/* Status Filter Buttons */}
-        <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 text-xs">
-          {['ALL', 'NEEDS_MANUAL_REVIEW', 'APPROVED', 'REJECTED'].map((st) => (
-            <button
-              key={st}
-              onClick={() => setFilterStatus(st)}
-              className={`px-3 py-1.5 rounded-lg font-semibold transition ${
-                filterStatus === st
-                  ? 'bg-blue-600 text-white shadow-md'
-                  : 'text-slate-400 hover:text-white hover:bg-slate-800'
-              }`}
+        {/* Controls: Department & Status Filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Department Filter Select */}
+          <div className="flex items-center space-x-2 bg-slate-900/80 px-3 py-1.5 rounded-xl border border-slate-800 text-xs">
+            <span className="text-slate-400 font-medium">Department:</span>
+            <select
+              value={filterDept}
+              onChange={(e) => setFilterDept(e.target.value)}
+              className="bg-transparent text-white font-semibold focus:outline-none cursor-pointer"
             >
-              {st.replace('_', ' ')}
-            </button>
-          ))}
+              <option value="ALL" className="bg-slate-900 text-white">All Departments</option>
+              {departments.map((d) => (
+                <option key={d.id} value={d.id} className="bg-slate-900 text-white">
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Status Filter Buttons */}
+          <div className="flex items-center space-x-2 bg-slate-900/80 p-1.5 rounded-xl border border-slate-800 text-xs">
+            {['ALL', 'NEEDS_MANUAL_REVIEW', 'APPROVED', 'REJECTED'].map((st) => (
+              <button
+                key={st}
+                onClick={() => setFilterStatus(st)}
+                className={`px-3 py-1.5 rounded-lg font-semibold transition ${
+                  filterStatus === st
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'text-slate-400 hover:text-white hover:bg-slate-800'
+                }`}
+              >
+                {st.replace('_', ' ')}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

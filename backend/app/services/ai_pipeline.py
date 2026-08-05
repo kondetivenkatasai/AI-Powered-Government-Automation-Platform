@@ -190,12 +190,17 @@ class AIPipeline:
         confidence_score = max(0.0, min(100.0, base_confidence))
         risk_score = max(0.0, min(100.0, base_risk))
 
-        if is_duplicate or risk_score >= 60.0 or any(c["status"] == "FAILED" for c in eligibility_checks):
+        has_eligibility_failure = any(c.get("status") == "FAILED" for c in eligibility_checks)
+
+        if has_eligibility_failure:
             recommendation = RecommendationType.REJECT.value
             status_update = ApplicationStatus.REJECTED.value
-        elif confidence_score >= 80.0 and risk_score <= 25.0 and fraud_score <= 25.0:
+        elif confidence_score >= 80.0 and risk_score <= 25.0 and fraud_score <= 25.0 and not is_duplicate and not discrepancies:
             recommendation = RecommendationType.APPROVE.value
             status_update = ApplicationStatus.APPROVED.value
+        elif is_duplicate or risk_score >= 60.0:
+            recommendation = RecommendationType.REJECT.value
+            status_update = ApplicationStatus.NEEDS_MANUAL_REVIEW.value
         else:
             recommendation = RecommendationType.MANUAL_REVIEW.value
             status_update = ApplicationStatus.NEEDS_MANUAL_REVIEW.value

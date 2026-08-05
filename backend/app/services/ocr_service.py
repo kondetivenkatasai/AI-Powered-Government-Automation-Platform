@@ -1,7 +1,14 @@
 import os
 import re
 from typing import Dict, Any, List, Optional
-from PIL import Image
+
+try:
+    from PIL import Image
+    HAS_PIL = True
+except ImportError:
+    Image = None
+    HAS_PIL = False
+
 
 try:
     import fitz # PyMuPDF

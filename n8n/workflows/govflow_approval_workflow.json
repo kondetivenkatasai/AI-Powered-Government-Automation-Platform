@@ -1,0 +1,96 @@
+{
+  "name": "GovFlow AI Smart Government Approval Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "application-submitted",
+        "options": {}
+      },
+      "name": "Webhook Application Submitted",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [100, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/api/v1/verification/{{$json[\"body\"][\"application_id\"]}}/analyze",
+        "options": {}
+      },
+      "name": "Trigger AI OCR & Fraud Pipeline",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json[\"confidence_score\"]}}",
+              "operation": "largerEqual",
+              "value2": 85
+            },
+            {
+              "value1": "={{$json[\"risk_score\"]}}",
+              "operation": "smallerEqual",
+              "value2": 20
+            }
+          ]
+        }
+      },
+      "name": "High Confidence & Low Risk?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [550, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/api/v1/officer/applications/{{$node[\"Webhook Application Submitted\"].json[\"body\"][\"application_id\"]}}/decision",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "decision", "value": "APPROVED" },
+            { "name": "decision_reason", "value": "Automated High-Confidence Approval via n8n Rule Engine" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Auto Approve & Issue Certificate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [780, 200]
+    },
+    {
+      "parameters": {
+        "url": "http://backend:8000/api/v1/notifications/send",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            { "name": "application_id", "value": "={{$node[\"Webhook Application Submitted\"].json[\"body\"][\"application_id\"]}}" },
+            { "name": "event_type", "value": "NEEDS_MANUAL_REVIEW" }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Route to Department Officer Queue",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 2,
+      "position": [780, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Application Submitted": {
+      "main": [[{ "node": "Trigger AI OCR & Fraud Pipeline", "type": "main", "index": 0 }]]
+    },
+    "Trigger AI OCR & Fraud Pipeline": {
+      "main": [[{ "node": "High Confidence & Low Risk?", "type": "main", "index": 0 }]]
+    },
+    "High Confidence & Low Risk?": {
+      "main": [
+        [{ "node": "Auto Approve & Issue Certificate", "type": "main", "index": 0 }],
+        [{ "node": "Route to Department Officer Queue", "type": "main", "index": 0 }]
+      ]
+    }
+  }
+}

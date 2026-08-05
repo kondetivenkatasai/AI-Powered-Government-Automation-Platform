@@ -54,7 +54,7 @@ interface AISummary {
   fraud_risk: number;
   ocr_accuracy: number;
   verification_score: number;
-  recommendation: 'APPROVED' | 'NEEDS_MANUAL_REVIEW' | 'REJECTED';
+  recommendation: 'APPROVED' | 'NEEDS_MANUAL_REVIEW' | 'REJECTED' | 'REJECT' | string;
 }
 
 interface IntakeResult {

@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { ApplicationType, Application } from '../../types';
-import { apiFetch } from '../../services/api';
+import { apiFetch, apiFormUpload } from '../../services/api';
 import {
   X, Upload, CheckCircle, FileText, AlertCircle, ArrowRight, ShieldCheck,
   FileX, Cpu, Layers, AlertTriangle, RefreshCw, CheckCircle2, Copy, Eye, Zap, ShieldAlert, UserCheck, UserX, Calendar
@@ -162,29 +162,11 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
         intakeData.append('files', file);
       });
 
-      const token = localStorage.getItem('govflow_token');
-      const rawApiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
-      const apiBase = rawApiBase.replace(/\/+$/, '');
-      const res = await fetch(`${apiBase}/applications/${appId}/batch-upload-intake`, {
-        method: 'POST',
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-        body: intakeData,
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.detail || 'Batch AI intake processing failed.');
-      }
-
-      const result: IntakeResult = await res.json();
+      const result = await apiFormUpload<IntakeResult>(`/applications/${appId}/batch-upload-intake`, intakeData);
       setProcessingStep('Completed');
       setIntakeResult(result);
     } catch (err: any) {
-      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-        setError('Unable to connect to backend server. Please check if the backend service is running and CORS is allowed.');
-      } else {
-        setError(err.message || 'AI Document Intake failed.');
-      }
+      setError(err.message || 'AI Document Intake failed.');
     } finally {
       clearInterval(interval);
       setIntakeProcessing(false);

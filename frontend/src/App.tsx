@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { Navbar } from './components/layout/Navbar';
 import { LoginForm } from './components/auth/LoginForm';
@@ -9,9 +9,41 @@ import { AdminDashboard } from './components/admin/AdminDashboard';
 
 const MainApp: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
-  const [isRegistering, setIsRegistering] = useState(false);
+  const [currentPath, setCurrentPath] = useState<string>(
+    typeof window !== 'undefined' ? window.location.pathname : '/'
+  );
 
-  console.log(`[AUTH] Protected route validation: isAuthenticated=${isAuthenticated}, isLoading=${isLoading}, role=${user?.role || 'NONE'}`);
+  useEffect(() => {
+    const handlePopState = () => {
+      setCurrentPath(window.location.pathname);
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (path: string) => {
+    if (window.location.pathname !== path) {
+      window.history.pushState(null, '', path);
+      setCurrentPath(path);
+    }
+  };
+
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (currentPath === '/login' || currentPath === '/register' || currentPath === '/') {
+        const targetPath = user.role === 'CITIZEN' ? '/citizen' : user.role === 'OFFICER' ? '/officer' : '/admin';
+        window.history.replaceState(null, '', targetPath);
+        setCurrentPath(targetPath);
+      }
+    } else if (!isLoading && !isAuthenticated) {
+      if (currentPath !== '/login' && currentPath !== '/register') {
+        window.history.replaceState(null, '', '/login');
+        setCurrentPath('/login');
+      }
+    }
+  }, [isAuthenticated, user, isLoading]);
+
+  console.log(`[ROUTER] Path: ${currentPath}, Auth: ${isAuthenticated}, Role: ${user?.role || 'NONE'}`);
 
   if (isLoading) {
     return (
@@ -26,7 +58,6 @@ const MainApp: React.FC = () => {
 
   if (isAuthenticated && user) {
     if (user.role === 'CITIZEN') {
-      console.log(`[DASHBOARD] Citizen Dashboard loaded successfully for: ${user.full_name}`);
       return (
         <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
           <Navbar />
@@ -39,7 +70,6 @@ const MainApp: React.FC = () => {
         </div>
       );
     } else if (user.role === 'OFFICER') {
-      console.log(`[DASHBOARD] Officer Dashboard loaded successfully for: ${user.full_name}`);
       return (
         <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
           <Navbar />
@@ -52,7 +82,6 @@ const MainApp: React.FC = () => {
         </div>
       );
     } else {
-      console.log(`[DASHBOARD] Admin Dashboard loaded successfully for: ${user.full_name}`);
       return (
         <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
           <Navbar />
@@ -67,7 +96,8 @@ const MainApp: React.FC = () => {
     }
   }
 
-  console.log('[AUTH] User not authenticated. Displaying Login / Registration portal form.');
+  const isRegistering = currentPath === '/register';
+
   return (
     <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
       <Navbar />
@@ -75,9 +105,9 @@ const MainApp: React.FC = () => {
       <main className="flex-1 flex flex-col">
         <div className="flex-1 flex items-center justify-center py-12 px-4">
           {isRegistering ? (
-            <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
+            <RegisterForm onSwitchToLogin={() => navigateTo('/login')} />
           ) : (
-            <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
+            <LoginForm onSwitchToRegister={() => navigateTo('/register')} />
           )}
         </div>
       </main>

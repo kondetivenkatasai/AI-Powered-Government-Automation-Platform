@@ -4,14 +4,34 @@ GovFlow AI is an end-to-end AI-powered government file processing and approval w
 
 ---
 
+## 🌐 Live Production Deployments
+
+- **Backend API (Render)**: [https://ai-powered-government-automation-platform.onrender.com](https://ai-powered-government-automation-platform.onrender.com)
+- **API Health Check**: [https://ai-powered-government-automation-platform.onrender.com/health](https://ai-powered-government-automation-platform.onrender.com/health)
+- **API v1 Base Endpoint**: [https://ai-powered-government-automation-platform.onrender.com/api/v1](https://ai-powered-government-automation-platform.onrender.com/api/v1)
+- **Interactive Swagger Docs**: [https://ai-powered-government-automation-platform.onrender.com/docs](https://ai-powered-government-automation-platform.onrender.com/docs)
+- **Frontend App (Vercel)**: Configured with `vercel.json` same-origin API proxying.
+
+---
+
 ## 🌟 Key Capabilities & Highlights
 
 - **30 Mins to <2 Mins Processing**: Automated OCR scanning, entity extraction, policy eligibility checking, and multi-document consistency validation.
+- **Pre-OCR Image Preprocessing**: EXIF auto-rotation (`exif_transpose`), contrast enhancement (`ImageEnhance.Contrast`), noise reduction, and image upscaling (minimum 1500px width) before deep learning OCR scanning.
+- **JPEG Metadata Filtering**: Strips binary header noise (`JFIF`, `Exif`, `ICC_PROFILE`, `Adobe`, `Photoshop`, `XMP`, `DQT`, `DHT`, `APP0`, `APP1`, `TSSV9P`) to prevent text contamination.
+- **Dedicated Per-Document Extractors**:
+  - **Aadhaar Card**: `{ documentType, name, gender, dob, aadhaarNumber, address, uid, vid }`
+  - **Income Certificate**: `{ documentType, applicantName, certificateNumber, annualIncome, issueDate, issuingAuthority }`
+  - **Electricity Bill**: `{ documentType, consumerName, consumerNumber, billNumber, dueDate, amount }`
+- **85% Confidence Guardrail**: Documents below 85% classification confidence return `"Unknown Document"` with warning `"Unknown Document - Please upload a clearer image."`.
+- **Cross-Verification Rules**:
+  - **Aadhaar Card**: Compare Applicant Name + DOB + 12-digit Aadhaar Number.
+  - **Income Certificate**: Compare Applicant Name + Government Certificate Number.
+  - **Electricity Bill**: Compare Consumer Name + Consumer Number.
 - **Human-in-the-Loop Officer Workstation**: High-density AI Copilot dashboard displaying Confidence Score (0-100%), Risk Index (0-100%), LLM Executive Summaries, and 1-Click Digital Sign-Off.
 - **Cryptographic Fraud & Duplicate Detection**: SHA256 file hashing to detect duplicate submissions and cross-document entity mismatch alerts.
 - **Digital Certificate Issuance**: Instant cryptographic digital certificate generation with verification QR codes and digital signatures for approved citizens.
-- **Role-Based Isolation (RBAC)**: Secure access separation for Citizens, Department Officers, and System Administrators.
-- **n8n Workflow Integration**: Event-driven webhook automation for department routing and multi-channel notifications (Email, SMS, Portal).
+- **Instant Authentication & Navigation**: Seamless JWT authentication state management with zero-delay role-based routing (`Citizen`, `Officer`, `Admin`).
 
 ---
 
@@ -106,6 +126,7 @@ AI automation/
 │   │   ├── App.tsx
 │   │   └── main.tsx
 │   ├── index.html
+│   ├── vercel.json
 │   ├── tailwind.config.js
 │   ├── postcss.config.js
 │   ├── tsconfig.json
@@ -115,6 +136,7 @@ AI automation/
 ├── n8n/
 │   └── workflows/govflow_approval_workflow.json
 ├── docker-compose.yml
+├── render.yaml
 └── README.md
 ```
 
@@ -163,12 +185,12 @@ The login page features 1-click preset buttons for instant demo switching:
    - Login as `citizen.demo@govflow.gov`.
    - Click **New Application** and select **Income Certificate**.
    - Fill in applicant details (Annual Income: ₹1,80,000) and attach required document proofs.
-   - Click **Submit & Trigger AI Processing**.
+   - Click **Run Multi-Document AI Classification & Identity Verification**.
 
 2. **Automated AI Processing (<2 Seconds)**:
    - The AI Pipeline executes OCR scanning, parses identity numbers, checks max income eligibility (<= ₹3,00,000 threshold), and checks SHA256 checksums for tampering.
    - Computes **95% Confidence Score** and **5% Risk Index**.
-   - Generates an **Executive LLM Summary Note**.
+   - Displays `Detected Document: ✓ Aadhaar Card` and cross-verifies name/DOB.
 
 3. **Officer Review & 1-Click Approval**:
    - Log in as `officer.revenue@govflow.gov`.
@@ -185,7 +207,7 @@ The login page features 1-click preset buttons for instant demo switching:
 
 ## 🧪 Testing Strategy
 
-Run backend unit tests and API checks:
+Run backend unit tests and OCR verification:
 ```bash
 pytest backend/tests
 ```
@@ -203,10 +225,3 @@ To launch the complete production stack (PostgreSQL + FastAPI + Nginx Frontend):
 docker-compose up --build -d
 ```
 
----
-
-## 🚀 Future Enhancements
-
-- Multi-language OCR support for regional Indic languages (Hindi, Tamil, Marathi, Bengali).
-- Direct Integration with DigiLocker API for authentic document fetching.
-- Blockchain-backed certificate hash logging on Polygon / Ethereum testnet.

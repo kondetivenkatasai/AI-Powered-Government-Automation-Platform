@@ -35,7 +35,8 @@ class AIPipeline:
 
         # Run Stage 1, 2, 3 & 4 per uploaded document
         for doc in docs:
-            ocr_res = ocr_service.classify_and_extract(doc.file_path, doc.document_type)
+            resolved_path = doc.file_path if (doc.file_path and os.path.exists(doc.file_path)) else os.path.abspath(doc.file_path) if doc.file_path else ""
+            ocr_res = ocr_service.classify_and_extract(resolved_path, doc.document_type)
             
             doc.expected_type = ocr_res["expected_type"]
             doc.detected_type = ocr_res["detected_type"]
@@ -95,8 +96,8 @@ class AIPipeline:
                 document_verifications.append(doc_verif)
                 break
 
-            # STAGE 3 CHECK: Classification Confidence Threshold
-            if doc.classification_confidence < 80.0:
+            # STAGE 3 CHECK: Classification Confidence Threshold (Stop if scan is completely unreadable <60%)
+            if doc.classification_confidence < 60.0:
                 circuit_breaker_triggered = True
                 circuit_breaker_stage = "Stage 3: Confidence Threshold"
                 circuit_breaker_reason = f"❌ Low Classification Confidence ({doc.classification_confidence:.1f}%). Document scan is too blurred or illegible. Processing stopped."
@@ -104,14 +105,9 @@ class AIPipeline:
                 document_verifications.append(doc_verif)
                 break
 
-            # STAGE 4 CHECK: Mandatory Fields Validation
+            # STAGE 4 CHECK: Mandatory Fields Validation (Flag missing fields for manual review instead of hard fraud reject)
             if not doc.mandatory_fields_status.get("valid", False):
-                circuit_breaker_triggered = True
-                circuit_breaker_stage = "Stage 4: Mandatory Field OCR Validation"
-                circuit_breaker_reason = f"❌ Mandatory Fields Missing ({', '.join(doc.mandatory_fields_status.get('missing_fields', []))}) on {doc.detected_type}. Processing stopped."
-                doc_verif["status"] = "MISSING_FIELDS_REJECTED"
-                document_verifications.append(doc_verif)
-                break
+                doc_verif["status"] = "NEEDS_MANUAL_REVIEW"
 
             document_verifications.append(doc_verif)
 

@@ -120,9 +120,9 @@ class OCRService:
         """
         lines = [l.strip() for l in raw_text.splitlines() if l.strip()]
 
-        # Strategy 0: Legal Government Certificate Pattern (Sri/Srimathi/Kumari [NAME] S/o / D/o / is a native of)
+        # Strategy 0: Legal Government Certificate Pattern (Sri/Srimathi/Kumari/certified that [NAME] S/o / D/o / is a native of)
         cert_preamble_match = re.search(
-            r'(?:sri/srimathi/kumari|sri/smt/kum|sri/srimathi|sri|smt|kumari)[-:\s#]+([a-zA-Z\s]{3,40}?)(?=\s+(?:s/o|d/o|m/o|f/o|w/o|h/o|c/o|is|a\s+native|belongs|resident|of|belonging|\n|$))',
+            r'(?:sri/srimathi/kumari|sri/smt/kum|sri/srimathi|sri|smt|kumari|certified that|certify that|certified to person that|certified to|that)[-:\s#]+([a-zA-Z\s]{3,40}?)(?=\s+(?:s/o|d/o|m/o|f/o|w/o|h/o|c/o|is|a\s+native|belongs|resident|of|belonging|\n|$))',
             raw_text,
             re.IGNORECASE
         )
@@ -145,17 +145,18 @@ class OCRService:
                 if i > 0:
                     candidate = lines[i-1].strip()
                     cand_lower = candidate.lower()
-                    if not any(hk in cand_lower for hk in HEADER_KEYWORDS) and not any(ak in cand_lower for ak in ADDRESS_KEYWORDS):
-                        if re.match(r'^[A-Za-z\s]{3,40}$', candidate) and len(candidate.split()) >= 1:
-                            return candidate.title()
+                    cand_clean = re.sub(r'[^a-zA-Z\s]', '', candidate).strip()
+                    if cand_clean and len(cand_clean) >= 3 and not any(hk in cand_lower for hk in HEADER_KEYWORDS) and not any(ak in cand_lower for ak in ADDRESS_KEYWORDS):
+                        return cand_clean.title()
 
         # Strategy 3: First valid non-header, non-address line
         for line in lines:
             lower_line = line.lower()
             if any(hk in lower_line for hk in HEADER_KEYWORDS) or any(ak in lower_line for ak in ADDRESS_KEYWORDS):
                 continue
-            if re.match(r'^[A-Za-z\s]{3,40}$', line) and len(line.split()) >= 1:
-                return line.title()
+            line_clean = re.sub(r'[^a-zA-Z\s]', '', line).strip()
+            if line_clean and len(line_clean) >= 3 and len(line_clean.split()) >= 1:
+                return line_clean.title()
 
         return None
 
@@ -164,34 +165,24 @@ class OCRService:
         """
         Strict Non-Hallucinating Real OCR Information Extraction Engine.
         Extracts structured information ONLY from text extracted via PyMuPDF + RapidOCR.
-        Enforces Document Priority Classification:
-        1. Electricity Bill (utility/apspdci/uscno/kwh)
-        2. Income Certificate (income/tahsildar/meeseva/annual income/revenue)
-        3. Aadhaar Card (aadhaar/uidai)
-        4. PAN Card
-        5. Passport
-        6. Driving License
         """
         real_ocr_text = cls.run_image_ocr(file_path_or_name, contents)
         raw_text = real_ocr_text if len(real_ocr_text) > 10 else (text_content or "")
         
         lower_text = raw_text.lower()
         filename_lower = os.path.basename(file_path_or_name).lower()
-        combined_scannable = f"{filename_lower} {lower_text}"
 
         warnings: List[str] = []
 
-        # Document Priority Classification
+        # Classification relies primarily on OCR text content
         document_type = "Unknown"
         doc_confidence = 0
 
-        # 1. Electricity Bill
-        if any(k in combined_scannable for k in ["apspdcl", "apspdci", "uscno", "bill date", "meter no", "kwh", "power distribution", "electricity", "utility"]):
+        # Check OCR text keywords first
+        if any(k in lower_text for k in ["apspdcl", "apspdci", "uscno", "bill date", "meter no", "kwh", "power distribution", "electricity", "utility"]):
             document_type = "Electricity Bill"
             doc_confidence = 98
-
-        # 2. Income Certificate (Checked BEFORE Aadhaar so Aadhaar numbers printed on Income Certs don't misclassify it)
-        elif any(k in combined_scannable for k in [
+        elif any(k in lower_text for k in [
             "income", "salary", "certificate of income", "revenue department", "tahsildar",
             "tahsildhar", "mro", "meeseva", "annual income", "family income", "gross income",
             "income_certificate", "incomecert", "income proof", "certificate of family income",
@@ -199,30 +190,40 @@ class OCRService:
         ]):
             document_type = "Income Certificate"
             doc_confidence = 97
-
-        # 3. Aadhaar Card
-        elif any(k in combined_scannable for k in ["aadhaar", "uidai", "aadhar", "unique identification", "governmentof india", "governmentofindia"]):
+        elif any(k in lower_text for k in ["aadhaar", "uidai", "aadhar", "unique identification", "governmentof india", "governmentofindia"]):
             document_type = "Aadhaar Card"
             doc_confidence = 99
-
-        # 4. PAN Card
-        elif any(k in combined_scannable for k in ["pan", "income tax department", "permanent account number"]):
+        elif any(k in lower_text for k in ["pan", "income tax department", "permanent account number"]):
             document_type = "PAN Card"
             doc_confidence = 98
-
-        # 5. Passport
-        elif any(k in combined_scannable for k in ["passport", "republic of india passport"]):
+        elif any(k in lower_text for k in ["passport", "republic of india passport"]):
             document_type = "Passport"
             doc_confidence = 98
-
-        # 6. Driving License
-        elif any(k in combined_scannable for k in ["driving", "license", "licence", "transport authority"]):
+        elif any(k in lower_text for k in ["driving", "license", "licence", "transport authority"]):
             document_type = "Driving License"
             doc_confidence = 98
 
+        # Fallback to filename hints ONLY if OCR produced readable text
+        if document_type == "Unknown" and len(lower_text) > 10:
+            if any(k in filename_lower for k in ["aadhaar", "aadhar"]):
+                document_type = "Aadhaar Card"
+                doc_confidence = 75
+            elif any(k in filename_lower for k in ["income", "revenue", "meeseva"]):
+                document_type = "Income Certificate"
+                doc_confidence = 75
+            elif any(k in filename_lower for k in ["eb", "electric", "utility", "bill"]):
+                document_type = "Electricity Bill"
+                doc_confidence = 75
+            elif "pan" in filename_lower:
+                document_type = "PAN Card"
+                doc_confidence = 75
+
         if document_type == "Unknown":
-            doc_confidence = 45
-            warnings.append("Document type could not be determined with high confidence.")
+            doc_confidence = 30
+            if len(lower_text) <= 10:
+                warnings.append("OCR could not extract readable text from document image. Please upload a clear image scan.")
+            else:
+                warnings.append("Document type could not be determined with high confidence.")
 
         fields: Dict[str, Optional[str]] = {
             "name": None,
@@ -242,11 +243,11 @@ class OCRService:
         # Real Pattern Extraction over OCR Text
 
         # Aadhaar Number: 12 digits or masked xxxx-xxxx-1234
-        aadhaar_match = re.search(r'\b[2-9]\d{3}\s?\d{4}\s?\d{4}\b', raw_text)
-        masked_aadhaar_match = re.search(r'\b[xX]{4,10}\d{4}\b', raw_text)
+        aadhaar_match = re.search(r'\b[2-9]\d{3}[\s-]?\d{4}[\s-]?\d{4}\b', raw_text)
+        masked_aadhaar_match = re.search(r'\b[xX0-9]{4}[\s-]?[xX0-9]{4}[\s-]?\d{4}\b', raw_text)
         if aadhaar_match:
             fields["aadhaar_number"] = aadhaar_match.group(0).strip()
-        elif masked_aadhaar_match:
+        elif masked_aadhaar_match and any(c in masked_aadhaar_match.group(0) for c in "xX"):
             fields["aadhaar_number"] = masked_aadhaar_match.group(0).strip()
 
         # PAN Number
@@ -265,7 +266,7 @@ class OCRService:
             fields["bill_number"] = bill_match.group(1).upper()
 
         # Certificate Number (Income / Official Certificate / Application No / CGC)
-        cgc_match = re.search(r'\b(?:CGC|INC|IC|ICERT)[A-Z0-9-]+\b', raw_text, re.IGNORECASE)
+        cgc_match = re.search(r'\b(?:CGC|INC|IC|ICERT|AP|TS)[A-Z0-9-]+\b', raw_text, re.IGNORECASE)
         cert_label_match = re.search(r'(?:certificate no|cert no|certificate number|cert#|income cert no|certificate_no|application no|application_no|app no|app_no)[-:\s#]*([a-z0-9/-]+)', lower_text)
         if cgc_match:
             fields["certificate_number"] = cgc_match.group(0).upper()
@@ -333,27 +334,31 @@ class OCRService:
                 clean_addr = re.sub(r',+', ',', clean_addr).strip()
                 fields["address"] = clean_addr
 
-        # Filter fields strictly by document type per user specifications
+        # Define allowed & core fields per document type
         if document_type == "Aadhaar Card":
             allowed_fields = ["name", "dob", "aadhaar_number", "gender", "address"]
+            has_core_field = fields["name"] is not None and (fields["aadhaar_number"] is not None or fields["dob"] is not None or fields["gender"] is not None)
         elif document_type == "Electricity Bill":
             allowed_fields = ["bill_number", "issue_date", "consumer_number", "billing_month"]
+            has_core_field = fields["consumer_number"] is not None or fields["bill_number"] is not None or fields["issue_date"] is not None
         elif document_type == "Income Certificate":
             allowed_fields = ["name", "certificate_number", "issue_date", "address"]
+            has_core_field = fields["name"] is not None or fields["certificate_number"] is not None
         elif document_type == "PAN Card":
             allowed_fields = ["name", "father_name", "pan_number", "dob"]
+            has_core_field = fields["name"] is not None and (fields["pan_number"] is not None or fields["dob"] is not None)
         else:
             allowed_fields = list(fields.keys())
+            has_core_field = len([k for k in fields.values() if k is not None]) > 0
 
         missing_fields = [k for k in allowed_fields if fields[k] is None]
         present_fields = [k for k in allowed_fields if fields[k] is not None]
-        has_core_field = len(present_fields) > 0
 
         for k in list(fields.keys()):
             if k not in allowed_fields:
                 fields[k] = None
 
-        status_result = "ACCEPTED" if (doc_confidence >= 80 and has_core_field) else "REVIEW_REQUIRED"
+        status_result = "ACCEPTED" if (doc_confidence >= 75 and has_core_field) else "REVIEW_REQUIRED"
 
         return {
             "document_type": document_type,

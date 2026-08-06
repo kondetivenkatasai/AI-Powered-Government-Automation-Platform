@@ -27,9 +27,18 @@ export const LoginForm: React.FC<LoginFormProps> = ({ onSwitchToRegister }) => {
     }
   };
 
-  const handleQuickDemo = (demoEmail: string, demoPw: string) => {
+  const handleQuickDemo = async (demoEmail: string, demoPw: string) => {
     setEmail(demoEmail);
     setPassword(demoPw);
+    setError('');
+    setLoading(true);
+    try {
+      await login(demoEmail, demoPw);
+    } catch (err: any) {
+      setError(err.message || 'Invalid demo login credentials');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (

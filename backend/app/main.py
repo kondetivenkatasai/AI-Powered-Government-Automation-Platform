@@ -30,6 +30,19 @@ app.add_middleware(
 
 app.include_router(api_router, prefix=settings.API_V1_STR)
 
+@app.get("/")
+@app.get(f"{settings.API_V1_STR}")
+@app.get(f"{settings.API_V1_STR}/")
+def root_info():
+    return {
+        "status": "online",
+        "service": settings.PROJECT_NAME,
+        "version": settings.VERSION,
+        "api_v1": f"{settings.API_V1_STR}",
+        "docs": "/docs",
+        "health": "/health"
+    }
+
 @app.get("/health")
 def health_check():
     return {

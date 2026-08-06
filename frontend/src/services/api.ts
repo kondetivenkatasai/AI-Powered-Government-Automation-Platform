@@ -2,7 +2,13 @@ export const getApiBaseUrl = (): string => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
   }
-  return '/api/v1';
+  if (typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+      return 'http://127.0.0.1:8000/api/v1';
+    }
+  }
+  return 'https://ai-powered-government-automation-platform.onrender.com/api/v1';
 };
 
 const fetchWithRetry = async (url: string, options: RequestInit = {}, retries: number = 3, delayMs: number = 3000): Promise<Response> => {

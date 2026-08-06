@@ -178,28 +178,26 @@ class OCRService:
         document_type = "Unknown"
         doc_confidence = 0
 
-        # Check OCR text keywords first
-        if any(k in lower_text for k in ["apspdcl", "apspdci", "uscno", "bill date", "meter no", "kwh", "power distribution", "electricity", "utility"]):
-            document_type = "Electricity Bill"
+        # Check OCR text keywords (Priority: Aadhaar Card -> PAN Card -> Income Cert -> Electricity Bill -> Passport -> DL)
+        if any(k in lower_text for k in ["aadhaar", "uidai", "aadhar", "unique identification", "governmentof india", "governmentofindia", "government of india"]):
+            document_type = "Aadhaar Card"
+            doc_confidence = 99
+        elif any(k in lower_text for k in ["income tax department", "permanent account number"]) or re.search(r'\bpan card\b|\bpan number\b', lower_text):
+            document_type = "PAN Card"
             doc_confidence = 98
         elif any(k in lower_text for k in [
-            "income", "salary", "certificate of income", "revenue department", "tahsildar",
-            "tahsildhar", "mro", "meeseva", "annual income", "family income", "gross income",
-            "income_certificate", "incomecert", "income proof", "certificate of family income",
-            "nativity", "community"
+            "income certificate", "certificate of income", "annual income", "family income", "gross income",
+            "tahsildar", "tahsildhar", "mro", "meeseva", "revenue department"
         ]):
             document_type = "Income Certificate"
             doc_confidence = 97
-        elif any(k in lower_text for k in ["aadhaar", "uidai", "aadhar", "unique identification", "governmentof india", "governmentofindia"]):
-            document_type = "Aadhaar Card"
-            doc_confidence = 99
-        elif any(k in lower_text for k in ["pan", "income tax department", "permanent account number"]):
-            document_type = "PAN Card"
+        elif any(k in lower_text for k in ["apspdcl", "apspdci", "uscno", "bill date", "meter no", "kwh", "power distribution", "electricity"]):
+            document_type = "Electricity Bill"
             doc_confidence = 98
         elif any(k in lower_text for k in ["passport", "republic of india passport"]):
             document_type = "Passport"
             doc_confidence = 98
-        elif any(k in lower_text for k in ["driving", "license", "licence", "transport authority"]):
+        elif any(k in lower_text for k in ["driving license", "driving licence", "transport authority"]):
             document_type = "Driving License"
             doc_confidence = 98
 

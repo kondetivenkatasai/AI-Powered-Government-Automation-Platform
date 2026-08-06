@@ -385,8 +385,10 @@ class DocumentClassifier:
 
         recommendation = "APPROVED"
         if missing_count > 0 or rejected_count > 0 or avg_fraud > 25.0:
-            if missing_count > 0 or avg_fraud > 50.0:
+            if rejected_count > 0 or avg_fraud > 50.0:
                 recommendation = "REJECTED"
+            elif missing_count > 0:
+                recommendation = "INCOMPLETE"
             else:
                 recommendation = "NEEDS_MANUAL_REVIEW"
 

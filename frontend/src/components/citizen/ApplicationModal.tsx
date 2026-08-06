@@ -415,11 +415,11 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
                         <span className={`px-3 py-1 rounded-full text-xs font-extrabold tracking-wider border ${
                           intakeResult.ai_summary.recommendation === 'APPROVED'
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                            : intakeResult.ai_summary.recommendation === 'NEEDS_MANUAL_REVIEW'
+                            : intakeResult.ai_summary.recommendation === 'NEEDS_MANUAL_REVIEW' || intakeResult.ai_summary.recommendation === 'INCOMPLETE'
                             ? 'bg-amber-500/20 text-amber-400 border-amber-500/40'
                             : 'bg-rose-500/20 text-rose-400 border-rose-500/40'
                         }`}>
-                          {intakeResult.ai_summary.recommendation}
+                          {intakeResult.ai_summary.recommendation === 'INCOMPLETE' ? 'INCOMPLETE (MISSING DOCS)' : intakeResult.ai_summary.recommendation}
                         </span>
                       </div>
 

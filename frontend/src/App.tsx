@@ -11,6 +11,8 @@ const MainApp: React.FC = () => {
   const { user, isAuthenticated, isLoading } = useAuth();
   const [isRegistering, setIsRegistering] = useState(false);
 
+  console.log(`[AUTH] Protected route validation: isAuthenticated=${isAuthenticated}, isLoading=${isLoading}, role=${user?.role || 'NONE'}`);
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-[#0B1120] flex items-center justify-center">
@@ -22,26 +24,62 @@ const MainApp: React.FC = () => {
     );
   }
 
+  if (isAuthenticated && user) {
+    if (user.role === 'CITIZEN') {
+      console.log(`[DASHBOARD] Citizen Dashboard loaded successfully for: ${user.full_name}`);
+      return (
+        <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
+          <Navbar />
+          <main className="flex-1 flex flex-col">
+            <CitizenDashboard />
+          </main>
+          <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+            GovFlow AI Platform &copy; 2026 • Government Technology & Automation Engine
+          </footer>
+        </div>
+      );
+    } else if (user.role === 'OFFICER') {
+      console.log(`[DASHBOARD] Officer Dashboard loaded successfully for: ${user.full_name}`);
+      return (
+        <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
+          <Navbar />
+          <main className="flex-1 flex flex-col">
+            <OfficerDashboard />
+          </main>
+          <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+            GovFlow AI Platform &copy; 2026 • Government Technology & Automation Engine
+          </footer>
+        </div>
+      );
+    } else {
+      console.log(`[DASHBOARD] Admin Dashboard loaded successfully for: ${user.full_name}`);
+      return (
+        <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
+          <Navbar />
+          <main className="flex-1 flex flex-col">
+            <AdminDashboard />
+          </main>
+          <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">
+            GovFlow AI Platform &copy; 2026 • Government Technology & Automation Engine
+          </footer>
+        </div>
+      );
+    }
+  }
+
+  console.log('[AUTH] User not authenticated. Displaying Login / Registration portal form.');
   return (
     <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
       <Navbar />
 
       <main className="flex-1 flex flex-col">
-        {!isAuthenticated ? (
-          <div className="flex-1 flex items-center justify-center py-12 px-4">
-            {isRegistering ? (
-              <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
-            ) : (
-              <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
-            )}
-          </div>
-        ) : user?.role === 'CITIZEN' ? (
-          <CitizenDashboard />
-        ) : user?.role === 'OFFICER' ? (
-          <OfficerDashboard />
-        ) : (
-          <AdminDashboard />
-        )}
+        <div className="flex-1 flex items-center justify-center py-12 px-4">
+          {isRegistering ? (
+            <RegisterForm onSwitchToLogin={() => setIsRegistering(false)} />
+          ) : (
+            <LoginForm onSwitchToRegister={() => setIsRegistering(true)} />
+          )}
+        </div>
       </main>
 
       <footer className="border-t border-slate-800/80 py-6 text-center text-xs text-slate-500">

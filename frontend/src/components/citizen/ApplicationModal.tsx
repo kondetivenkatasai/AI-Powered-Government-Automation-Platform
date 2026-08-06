@@ -163,24 +163,28 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
       });
 
       const token = localStorage.getItem('govflow_token');
-      const apiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      const rawApiBase = import.meta.env.VITE_API_BASE_URL || '/api/v1';
+      const apiBase = rawApiBase.replace(/\/+$/, '');
       const res = await fetch(`${apiBase}/applications/${appId}/batch-upload-intake`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
         body: intakeData,
       });
 
       if (!res.ok) {
-        throw new Error('Batch AI intake processing failed.');
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.detail || 'Batch AI intake processing failed.');
       }
 
       const result: IntakeResult = await res.json();
       setProcessingStep('Completed');
       setIntakeResult(result);
     } catch (err: any) {
-      setError(err.message || 'AI Document Intake failed.');
+      if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
+        setError('Unable to connect to backend server. Please check if the backend service is running and CORS is allowed.');
+      } else {
+        setError(err.message || 'AI Document Intake failed.');
+      }
     } finally {
       clearInterval(interval);
       setIntakeProcessing(false);

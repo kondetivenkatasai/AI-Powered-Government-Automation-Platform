@@ -10,6 +10,22 @@ export const getApiBaseUrl = (): string => {
   return 'https://ai-powered-government-automation-platform.onrender.com/api/v1';
 };
 
+const fetchWithRetry = async (url: string, options: RequestInit = {}, retries: number = 3, delayMs: number = 3000): Promise<Response> => {
+  let lastError: any = null;
+  for (let i = 0; i < retries; i++) {
+    try {
+      const response = await fetch(url, options);
+      return response;
+    } catch (err: any) {
+      lastError = err;
+      if (i < retries - 1) {
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+  }
+  throw lastError;
+};
+
 export const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): Promise<T> => {
   const token = localStorage.getItem('govflow_token');
   const baseUrl = getApiBaseUrl();
@@ -26,7 +42,7 @@ export const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): 
   const cleanEndpoint = endpoint.startsWith('/') ? endpoint : `/${endpoint}`;
 
   try {
-    const response = await fetch(`${baseUrl}${cleanEndpoint}`, {
+    const response = await fetchWithRetry(`${baseUrl}${cleanEndpoint}`, {
       ...options,
       headers,
     });
@@ -43,9 +59,6 @@ export const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): 
     return data as T;
   } catch (err: any) {
     if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-      if (baseUrl.includes('onrender.com')) {
-        throw new Error('Render backend server is waking up from sleep mode (~30s delay). Please wait a moment and click again!');
-      }
       throw new Error(`Unable to connect to backend server at ${baseUrl}. Please ensure the backend service is running.`);
     }
     throw err;
@@ -63,7 +76,7 @@ export const apiFormUpload = async <T>(endpoint: string, formData: FormData): Pr
   }
 
   try {
-    const response = await fetch(`${baseUrl}${cleanEndpoint}`, {
+    const response = await fetchWithRetry(`${baseUrl}${cleanEndpoint}`, {
       method: 'POST',
       headers,
       body: formData,
@@ -81,9 +94,6 @@ export const apiFormUpload = async <T>(endpoint: string, formData: FormData): Pr
     return data as T;
   } catch (err: any) {
     if (err.name === 'TypeError' && err.message === 'Failed to fetch') {
-      if (baseUrl.includes('onrender.com')) {
-        throw new Error('Render backend server is waking up from sleep mode (~30s delay). Please wait a moment and click again!');
-      }
       throw new Error(`Unable to connect to backend server at ${baseUrl}. Please ensure the backend service is running.`);
     }
     throw err;

@@ -31,7 +31,8 @@ const MainApp: React.FC = () => {
   useEffect(() => {
     if (isAuthenticated && user) {
       if (currentPath === '/login' || currentPath === '/register' || currentPath === '/') {
-        const targetPath = user.role === 'CITIZEN' ? '/citizen' : user.role === 'OFFICER' ? '/officer' : '/admin';
+        const userRole = (user.role || '').toUpperCase();
+        const targetPath = userRole === 'CITIZEN' ? '/citizen' : userRole === 'OFFICER' ? '/officer' : '/admin';
         window.history.replaceState(null, '', targetPath);
         setCurrentPath(targetPath);
       }
@@ -41,7 +42,7 @@ const MainApp: React.FC = () => {
         setCurrentPath('/login');
       }
     }
-  }, [isAuthenticated, user, isLoading]);
+  }, [isAuthenticated, user, isLoading, currentPath]);
 
   console.log(`[ROUTER] Path: ${currentPath}, Auth: ${isAuthenticated}, Role: ${user?.role || 'NONE'}`);
 
@@ -57,7 +58,8 @@ const MainApp: React.FC = () => {
   }
 
   if (isAuthenticated && user) {
-    if (user.role === 'CITIZEN') {
+    const roleUpper = (user.role || '').toUpperCase();
+    if (roleUpper === 'CITIZEN') {
       return (
         <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
           <Navbar />
@@ -69,7 +71,7 @@ const MainApp: React.FC = () => {
           </footer>
         </div>
       );
-    } else if (user.role === 'OFFICER') {
+    } else if (roleUpper === 'OFFICER') {
       return (
         <div className="min-h-screen bg-[#0B1120] flex flex-col font-sans">
           <Navbar />

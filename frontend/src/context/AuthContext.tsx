@@ -48,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const login = async (email: string, password: string) => {
     console.log(`[AUTH] Login request initiated for email: ${email}`);
-    setIsLoading(true);
     try {
       const res = await apiFetch<LoginResponse>('/auth/login', {
         method: 'POST',
@@ -65,18 +64,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(res.user);
 
       console.log(`[AUTH] Auth state updated successfully. User: ${res.user.full_name} (${res.user.role})`);
-      console.log(`[AUTH] Automatic redirecting initiated to ${res.user.role} dashboard...`);
     } catch (err: any) {
       console.error('[AUTH] Login request failed:', err.message || err);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 
   const register = async (fullName: string, email: string, password: string, phone?: string) => {
     console.log(`[AUTH] Citizen Registration request initiated for email: ${email}`);
-    setIsLoading(true);
     try {
       await apiFetch<User>('/auth/register', {
         method: 'POST',
@@ -94,8 +89,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     } catch (err: any) {
       console.error('[AUTH] Registration failed:', err.message || err);
       throw err;
-    } finally {
-      setIsLoading(false);
     }
   };
 

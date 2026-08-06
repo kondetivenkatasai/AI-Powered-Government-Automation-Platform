@@ -554,7 +554,7 @@ export const ApplicationModal: React.FC<ApplicationModalProps> = ({ isOpen, onCl
                             )}
 
                             <div className="flex items-center justify-between text-xs">
-                              <div>Detected: <strong className="text-white font-bold">{item.detected_type}</strong></div>
+                              <div>Detected Document: <strong className="text-emerald-400 font-bold ml-1">✓ {item.detected_type}</strong></div>
                               {item.is_duplicate && (
                                 <span className="text-rose-400 font-semibold flex items-center space-x-1">
                                   <Copy className="w-3.5 h-3.5" />

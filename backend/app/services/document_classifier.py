@@ -210,22 +210,24 @@ class DocumentClassifier:
             extracted_entities = ocr_res["extracted_entities"]
             strict_ocr_json = ocr_res.get("strict_ocr_json", {})
             ocr_raw_text = ocr_res["ocr_raw_text"]
-            fields = (strict_ocr_json.get("fields") or {})
-
-            doc_extracted_name = fields.get("name") or extracted_entities.get("name")
-            doc_extracted_dob = fields.get("dob") or extracted_entities.get("dob")
+            tf = strict_ocr_json.get("template_fields") or {}
+            doc_extracted_name = tf.get("name") or tf.get("applicantName") or tf.get("consumerName") or fields.get("name") or extracted_entities.get("name")
+            doc_extracted_dob = tf.get("dob") or fields.get("dob") or extracted_entities.get("dob")
 
             # Document-specific matching rules
             if detected_type in ["Aadhaar Card", "PAN Card", "Passport"]:
                 name_match_status, name_match_pct = cls.compare_applicant_names(form_applicant_name, doc_extracted_name)
                 dob_match_status, dob_match_pct = cls.compare_dates(form_dob, doc_extracted_dob)
             elif detected_type == "Income Certificate":
-                # Compare ONLY on Name (DO NOT compare on DOB)
                 name_match_status, name_match_pct = cls.compare_applicant_names(form_applicant_name, doc_extracted_name)
                 dob_match_status = None
                 dob_match_pct = 0.0
+            elif detected_type == "Electricity Bill":
+                consumer_name = tf.get("consumerName") or fields.get("name")
+                name_match_status, name_match_pct = cls.compare_applicant_names(form_applicant_name, consumer_name) if form_applicant_name and consumer_name else (None, 0.0)
+                dob_match_status = None
+                dob_match_pct = 0.0
             else:
-                # Electricity Bill & Other Utility Proofs are exempt from personal name/DOB checks
                 name_match_status = None
                 name_match_pct = 0.0
                 dob_match_status = None

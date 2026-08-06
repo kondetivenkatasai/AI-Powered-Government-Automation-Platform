@@ -1,14 +1,26 @@
 export const getApiBaseUrl = (): string => {
+  let url = '';
   if (import.meta.env.VITE_API_BASE_URL) {
-    return import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
-  }
-  if (typeof window !== 'undefined') {
+    url = import.meta.env.VITE_API_BASE_URL.replace(/\/+$/, '');
+  } else if (typeof window !== 'undefined') {
     const host = window.location.hostname;
     if (host === 'localhost' || host === '127.0.0.1') {
       return 'http://127.0.0.1:8000/api/v1';
     }
+    url = 'https://ai-powered-government-automation-platform.onrender.com';
+  } else {
+    url = 'https://ai-powered-government-automation-platform.onrender.com';
   }
-  return 'https://ai-powered-government-automation-platform.onrender.com/api/v1';
+
+  // Ensure /api/v1 path prefix is present
+  if (!url.endsWith('/api/v1')) {
+    if (url.endsWith('/api')) {
+      url = `${url}/v1`;
+    } else {
+      url = `${url}/api/v1`;
+    }
+  }
+  return url;
 };
 
 const fetchWithRetry = async (url: string, options: RequestInit = {}, retries: number = 3, delayMs: number = 3000): Promise<Response> => {

@@ -15,7 +15,8 @@ router = APIRouter()
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
     """Register a new Citizen user."""
-    existing_user = db.query(User).filter(User.email == user_in.email).first()
+    clean_email = user_in.email.lower().strip()
+    existing_user = db.query(User).filter(User.email == clean_email).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -24,7 +25,7 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
     
     hashed_pwd = get_password_hash(user_in.password)
     user = User(
-        email=user_in.email,
+        email=clean_email,
         hashed_password=hashed_pwd,
         full_name=user_in.full_name,
         phone_number=user_in.phone_number,
@@ -39,7 +40,8 @@ def register_user(user_in: UserCreate, db: Session = Depends(get_db)) -> Any:
 @router.post("/login", response_model=Token)
 def login(login_data: LoginRequest, db: Session = Depends(get_db)) -> Any:
     """Login with email and password to receive JWT bearer token."""
-    user = db.query(User).filter(User.email == login_data.email).first()
+    clean_email = login_data.email.lower().strip()
+    user = db.query(User).filter(User.email == clean_email).first()
     if not user or not verify_password(login_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -61,7 +63,8 @@ def login(login_data: LoginRequest, db: Session = Depends(get_db)) -> Any:
 @router.post("/login/form", response_model=Token)
 def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)) -> Any:
     """OAuth2 compatible token login for Swagger UI documentation."""
-    user = db.query(User).filter(User.email == form_data.username).first()
+    clean_email = form_data.username.lower().strip()
+    user = db.query(User).filter(User.email == clean_email).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -78,3 +81,4 @@ def login_form(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = D
 def get_me(current_user: User = Depends(get_current_user)) -> Any:
     """Retrieve current logged in user metadata."""
     return current_user
+

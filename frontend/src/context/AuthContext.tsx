@@ -32,10 +32,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(userData);
         setToken(storedToken);
       } catch (err: any) {
-        console.warn('[AUTH] Token validation failed. Clearing stale localStorage token:', err.message || err);
-        localStorage.removeItem('govflow_token');
-        setToken(null);
-        setUser(null);
+        console.warn('[AUTH] Token validation failed:', err.message || err);
+        if (err.message && (err.message.includes('401') || err.message.includes('expired') || err.message.includes('invalid'))) {
+          localStorage.removeItem('govflow_token');
+          setToken(null);
+          setUser(null);
+        }
       } finally {
         setIsLoading(false);
       }

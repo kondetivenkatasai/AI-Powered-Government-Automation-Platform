@@ -51,7 +51,7 @@ export const apiFetch = async <T>(endpoint: string, options: RequestInit = {}): 
     const data = await response.json();
 
     if (!response.ok) {
-      if (response.status === 401) {
+      if (response.status === 401 && !cleanEndpoint.includes('/auth/login') && !cleanEndpoint.includes('/auth/register')) {
         throw new Error('Session expired or invalid authentication token (401). Please log in again.');
       }
       throw new Error(data.detail || 'An unexpected API error occurred');
